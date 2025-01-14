@@ -1,5 +1,5 @@
 from flask import Flask, request, abort
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from linebot.v3 import (
     WebhookHandler
 )
@@ -18,7 +18,7 @@ from linebot.v3.webhooks import (
     TextMessageContent
 )
 import os
-load_dotenv()
+# load_dotenv()
 
 configuration = Configuration(access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 line_handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
