@@ -2,7 +2,7 @@ from flask import Flask, request, abort, jsonify
 import base64
 import requests
 
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from linebot.v3 import (
     WebhookHandler
 )
@@ -22,7 +22,7 @@ from linebot.v3.webhooks import (
     TextMessageContent
 )
 import os
-load_dotenv()
+# load_dotenv()
 
 # 2025/02/06 要串接 google gemini, 
 import google.generativeai as textgenai
