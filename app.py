@@ -2,7 +2,7 @@ from flask import Flask, request, abort, jsonify
 import base64
 import requests
 
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 from linebot.v3 import (
     WebhookHandler
 )
@@ -22,7 +22,18 @@ from linebot.v3.webhooks import (
     TextMessageContent
 )
 import os
-# load_dotenv()
+load_dotenv()
+
+# 2025/02/06 要串接 google gemini, 
+import google.generativeai as textgenai
+# 取 gemini api key.
+textgenai.configure(api_key=os.environ["GEMINI_API_KEY"])
+# 要串接 gemini傳圖功能: https://ai.google.dev/gemini-api/docs/vision?hl=zh-tw&lang=python
+
+## pic to gemini
+from google import genai
+import PIL.Image
+
 
 configuration = Configuration(access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 line_handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
@@ -101,6 +112,46 @@ def send_image_to_AI(image_path):
 # def chat_completions(input_text):
 #     data={}
 
+# 2025/02/06 串接 gemini.
+def GeminiChatBot(prompt_input):
+    # Create the model
+    generation_config = {
+        "temperature": 1,
+        "top_p": 0.95,
+        "top_k": 40,
+        "max_output_tokens": 8192,
+        "response_mime_type": "text/plain",
+    }
+
+    model = textgenai.GenerativeModel(
+        model_name="gemini-2.0-flash-exp",
+        generation_config=generation_config,
+    )
+
+    chat_session = model.start_chat(
+        history=[
+        ]
+    )
+
+    response = chat_session.send_message(prompt_input)
+    return response.text
+
+# pic to Gemini
+def GeminiChatBot_pic():
+    # 改本地端載入影像:
+    image_path="pic/downloadimg.jpg"
+    image=PIL.Image.open(image_path)
+
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-exp",
+        # 原始範例:
+        # contents=["What is this image?",
+        #           types.Part.from_bytes(image.content, "image/jpeg")])
+        contents=["這張圖是什麼?",
+                image])
+    # print(response.text)
+    return "你上傳了一張圖,\n ai回答: \n "+response.text
 
 # @line_handler.add(MessageEvent, message=TextMessageContent)
 @line_handler.add(MessageEvent)
@@ -110,6 +161,13 @@ def handle_message(event):
         # print(event)
         if event.message.type == 'text':
             print(f"Hello~ message {event.message.id} type=text")
+
+            # 2025/02/06 塞咒語訊息到 gemini:
+            if("ai:" in event.message.text[0:3]):
+                result=GeminiChatBot(event.message.text)
+            else:
+                result=event.message.text if "c:" in event.message.text[0:2] else ""
+
         elif event.message.type == 'image':
             message_pic=get_message_pic(event.message.id, os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
             image_path=os.path.join('pic','downloadimg.jpg')
@@ -119,12 +177,14 @@ def handle_message(event):
 
             print(f"picture saved")
 
-            img_result=send_image_to_AI(image_path) ## 傳給 AI LMStudio
+            # result=send_image_to_AI(image_path) ## 傳給 AI LMStudio
+            result=GeminiChatBot_pic()
+        
         line_bot_api.reply_message_with_http_info(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 # messages=[TextMessage(text=event.message.text)]
-                messages=[TextMessage(text=img_result)]
+                messages=[TextMessage(text=result)]
             )
         )
         print(f"{event.timestamp} msg from {event.source} : {event.message.text}")
