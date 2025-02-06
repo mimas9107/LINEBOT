@@ -164,7 +164,7 @@ def handle_message(event):
 
             # 2025/02/06 塞咒語訊息到 gemini:
             if("ai:" in event.message.text[0:3]):
-                result=GeminiChatBot(event.message.text)
+                result=GeminiChatBot(event.message.text[3::])
             else:
                 result=event.message.text if "c:" in event.message.text[0:2] else ""
 
@@ -180,14 +180,16 @@ def handle_message(event):
             # result=send_image_to_AI(image_path) ## 傳給 AI LMStudio
             result=GeminiChatBot_pic()
         
-        line_bot_api.reply_message_with_http_info(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                # messages=[TextMessage(text=event.message.text)]
-                messages=[TextMessage(text=result)]
+        # 2025/02/06如果 result是空的話, linebot不處理訊息,
+        if(result!=""):
+            line_bot_api.reply_message_with_http_info(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    # messages=[TextMessage(text=event.message.text)]
+                    messages=[TextMessage(text=result)]
+                )
             )
-        )
-        print(f"{event.timestamp} msg from {event.source} : {event.message.text}")
+            print(f"{event.timestamp} msg from {event.source} : {event.message.text}")
 
 if __name__ == '__main__':
     app.run(debug=True)
