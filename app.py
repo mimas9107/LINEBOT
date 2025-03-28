@@ -33,10 +33,12 @@ textgenai.configure(api_key=os.environ["GEMINI_API_KEY"])
 ## pic to gemini
 from google import genai
 import PIL.Image
-
+import json #20250328
 
 configuration = Configuration(access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 line_handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
+
+GOOGLE_APPS_SCRIPT_URL=os.getenv("GOOGLE_APPS_SCRIPT_URL") #20250328
 
 app = Flask(__name__)
 
@@ -159,6 +161,13 @@ def handle_message(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
         # print(event)
+
+        #20250328
+        user_message_text="" 
+        user_message_type=event.message.type
+        timestamp=event.timestamp
+        user_id = event.source.user_id if event.source.type == "user" else (event.source.group_id if event.source.type == "group" else event.source.room_id if event.source.type == "room" else "unknown")
+
         if event.message.type == 'text':
             print(f"Hello~ message {event.message.id} type=text")
 
@@ -190,6 +199,23 @@ def handle_message(event):
                 )
             )
             print(f"{event.timestamp} msg from {event.source} : {event.message.text}")
+        
+        # 20250328
+        # 新增：將使用者訊息發送到 Google Apps Script
+        if GOOGLE_APPS_SCRIPT_URL:
+            payload = {
+                "timestamp": timestamp,
+                "userId": user_id,
+                "messageType": user_message_type,
+                "messageText": user_message_text
+            }
+            try:
+                headers = {'Content-Type': 'application/json'}
+                response = requests.post(GOOGLE_APPS_SCRIPT_URL, headers=headers, data=json.dumps(payload))
+                response.raise_for_status() # 如果請求失敗會拋出異常
+                print(f"訊息已成功發送到 Google Sheet. Status Code: {response.status_code}")
+            except requests.exceptions.RequestException as e:
+                print(f"發送訊息到 Google Sheet 失敗: {e}")
 
 if __name__ == '__main__':
     app.run(debug=True)
