@@ -176,7 +176,7 @@ def handle_message(event):
                 result=GeminiChatBot(event.message.text[3::])
             else:
                 result=event.message.text if "c:" in event.message.text[0:2] else ""
-
+            user_message_text=result
         elif event.message.type == 'image':
             message_pic=get_message_pic(event.message.id, os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
             image_path=os.path.join('pic','downloadimg.jpg')
