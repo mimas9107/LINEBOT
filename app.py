@@ -1,6 +1,7 @@
 from flask import Flask, request, abort, jsonify
 import base64
 import requests
+import time
 
 # from dotenv import load_dotenv
 from linebot.v3 import (
@@ -34,6 +35,8 @@ textgenai.configure(api_key=os.environ["GEMINI_API_KEY"])
 from google import genai
 import PIL.Image
 import json #20250328
+
+CHAT_HISTORY_LENGTH=5 ## 2020330定義要擷取幾則歷史訊息.
 
 configuration = Configuration(access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
 line_handler = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
@@ -155,6 +158,31 @@ def GeminiChatBot_pic():
     # print(response.text)
     return "你上傳了一張圖,\n ai回答: \n "+response.text
 
+def get_chat_history(user_id):
+    if not GOOGLE_APPS_SCRIPT_URL:
+        print("GOOGLE_APPS_SCRIPT_URL environment variable not set.")
+        return []
+
+    # history_url = f"{GOOGLE_APPS_SCRIPT_URL}?action=get_history&userId={user_id}&limit={CHAT_HISTORY_LENGTH}"
+    history_url=GOOGLE_APPS_SCRIPT_URL
+    payload={
+        "action":"get_history",
+        "userId":user_id,
+        "limit":CHAT_HISTORY_LENGTH
+    }
+    headers={'Content-Type':'application/json'}
+    try:
+        # response = requests.get(history_url)
+        response=requests.post(history_url, headers=headers, data=json.dumps(payload))
+        response.raise_for_status()
+        history_data = response.json().get("history", [])
+        
+        return history_data
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching chat history: {e}")
+        return []
+
+
 # @line_handler.add(MessageEvent, message=TextMessageContent)
 @line_handler.add(MessageEvent)
 def handle_message(event):
@@ -170,13 +198,27 @@ def handle_message(event):
 
         if event.message.type == 'text':
             print(f"Hello~ message {event.message.id} type=text")
+            user_message_text=event.message.text
 
             # 2025/02/06 塞咒語訊息到 gemini:
             if("ai:" in event.message.text[0:3]):
-                result=GeminiChatBot(event.message.text[3::])
+                # result=GeminiChatBot(event.message.text[3::])
+                # user_message_text=event.message.text[3::]
+                chat_history=get_chat_history(user_id)
+                formatted_history=""
+                for entry in chat_history:
+                    if entry['userId']==user_id:
+                        formatted_history += f"User: {entry['messageText']}\n"
+                    else:
+                        formatted_history += f"Bot: {entry['messageText']}\n"
+                ## 建立歷史紀錄prompt
+                prompt_input=f"{formatted_history}User: {event.message.text[3:]}"
+                result=GeminiChatBot(prompt_input)
+                        
             else:
                 result=event.message.text if "c:" in event.message.text[0:2] else ""
-            user_message_text=event.message.text
+
+            
             
         elif event.message.type == 'image':
             message_pic=get_message_pic(event.message.id, os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
@@ -212,6 +254,7 @@ def handle_message(event):
             }
             try:
                 headers = {'Content-Type': 'application/json'}
+                time.sleep(0.25)  #加一個小延遲防止訊息傳進來太快 google app script來不及寫入 sheet.
                 response = requests.post(GOOGLE_APPS_SCRIPT_URL, headers=headers, data=json.dumps(payload))
                 response.raise_for_status() # 如果請求失敗會拋出異常
                 print(f"訊息已成功發送到 Google Sheet. Status Code: {response.status_code}")
