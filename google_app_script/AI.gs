@@ -8,7 +8,7 @@ function analyzeWebsiteTitleWithAI(url) {
     // --- 這裡需要替換成您使用的 AI 服務的相關資訊 ---
 
     // var apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=你的Gemini Token"; // 請替換成 AI 服務的 API 端點
-    var apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyAnFZbXjZlOamgg7javYIDLfB0HUwHqgZ8"; // 請替換成 AI 服務的 API 端點
+    
 
     var requestData = {
         "contents": [{
