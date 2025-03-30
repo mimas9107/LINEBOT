@@ -174,9 +174,12 @@ def get_chat_history(user_id):
     try:
         # response = requests.get(history_url)
         response=requests.post(history_url, headers=headers, data=json.dumps(payload))
+        print(f"[get_chat_history] response={response}")
+
         response.raise_for_status()
         history_data = response.json().get("history", [])
-        
+        print(f"[get_chat_history] history_data={history_data}")
+
         return history_data
     except requests.exceptions.RequestException as e:
         print(f"Error fetching chat history: {e}")
@@ -205,15 +208,23 @@ def handle_message(event):
                 # result=GeminiChatBot(event.message.text[3::])
                 # user_message_text=event.message.text[3::]
                 chat_history=get_chat_history(user_id)
+                print(f"chat_history={chat_history}")
+
                 formatted_history=""
                 for entry in chat_history:
                     if entry['userId']==user_id:
                         formatted_history += f"User: {entry['messageText']}\n"
                     else:
                         formatted_history += f"Bot: {entry['messageText']}\n"
+                    print(f"formatted_history={formatted_history}")
+
                 ## 建立歷史紀錄prompt
                 prompt_input=f"{formatted_history}User: {event.message.text[3:]}"
+                print(f"prompt_input={prompt_input}")
+
                 result=GeminiChatBot(prompt_input)
+                
+                print(f"ai result={result[0:]}")
                         
             else:
                 result=event.message.text if "c:" in event.message.text[0:2] else ""
