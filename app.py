@@ -174,7 +174,7 @@ def get_chat_history(user_id):
     try:
         # response = requests.get(history_url)
         response=requests.post(history_url, headers=headers, data=json.dumps(payload))
-        print(f"[get_chat_history] response={response}")
+        print(f"[get_chat_history] response={response.content}")
 
         response.raise_for_status()
         history_data = response.json().get("history", [])
