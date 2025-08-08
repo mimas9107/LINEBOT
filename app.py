@@ -272,5 +272,64 @@ def handle_message(event):
             except requests.exceptions.RequestException as e:
                 print(f"發送訊息到 Google Sheet 失敗: {e}")
 
+import threading
+import random
+from datetime import datetime
+
+
+def pingself():
+    try:
+        print("[Activity] ping 自己 /about")
+        # requests.get("https://你的-render-app.onrender.com/about")
+        requests.get("https://linebot-bisb.onrender.com/about")
+    except Exception as e:
+        print(f"[pingself] Error: {e}")
+
+def pingout():
+    try:
+        print("[Activity] ping 外部 API")
+        res = requests.get("https://wttr.in/Taipei?format=3")
+        print(f"[pingout] {res.text}")
+    except Exception as e:
+        print(f"[pingout] Error: {e}")
+
+def googlesheetlog():
+    # payload = {
+    #     "timestamp": datetime.now().isoformat(),
+    #     "userId": "system",
+    #     "messageType": "keepalive",
+    #     "messageText": f"執行函式：{func_name}"
+    # }
+    payload = {
+        "action": "stay_awake_log",
+        "timestamp": datetime.now().isoformat(),
+        "functionName": "googlesheetlog",
+        "status": "OK",
+        "note": "系統保持清醒記錄"
+    }
+
+    try:
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(
+            os.getenv("GOOGLE_APPS_SCRIPT_URL"),
+            headers=headers,
+            data=json.dumps(payload)
+        )
+        print(f"[googlesheetlog] 上傳成功: {response.status_code}")
+    except Exception as e:
+        print(f"[googlesheetlog] 發送錯誤: {e}")
+
+def activity_loop():
+    funcs = [pingself, pingout, googlesheetlog]
+    while True:
+        # 隨機挑一項功能來執行: 
+        chosen_func = random.choice(funcs)
+        print(f"[Activity Loop] 執行：{chosen_func.__name__}")
+        chosen_func()
+        # googlesheetlog()
+        time.sleep(780)  # 每 13 分鐘執行一次
+
+threading.Thread(target=activity_loop, daemon=True).start()
+
 if __name__ == '__main__':
     app.run(debug=True)

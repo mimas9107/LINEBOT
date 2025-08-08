@@ -1,3 +1,5 @@
+## 2025/08/08 加入 keepalive 機制.
+
 ## 2025/03/30 串接 Gemini 與 google sheet有記憶功能(前5筆使用者訊息)
 
 ## 2025/03/28 串接 google sheet達成書籤功能

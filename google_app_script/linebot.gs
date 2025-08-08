@@ -5,6 +5,35 @@ function doPost(e) {
       return getChatHistory(params.userId, params.limit);
     }
   }
+  // 20250808 加入判斷是否為保持清醒記錄類別
+  var dataTry;
+  try {
+    dataTry = JSON.parse(e.postData.contents);
+    if (dataTry && dataTry.action === "stay_awake_log") {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheetName = "keepalive";
+      var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+      
+      // 如第一次建立則加入欄位名稱
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow(["時間戳記", "執行函式", "狀態", "其他備註"]);
+      }
+
+      // 寫入一列資料（注意這裡你可以傳更多欄位進來）
+      sheet.appendRow([
+        new Date(dataTry.timestamp || new Date()), 
+        dataTry.functionName || "unknown", 
+        dataTry.status || "", 
+        dataTry.note || ""
+      ]);
+
+      return ContentService.createTextOutput(JSON.stringify({"status": "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (err) {
+    Logger.log("處理保持清醒 action 時發生錯誤：" + err);
+    // 不回傳錯誤，讓後面流程繼續跑
+  }
+  
   //取這個試算表
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
