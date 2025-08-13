@@ -185,6 +185,52 @@ def get_chat_history(user_id):
         print(f"Error fetching chat history: {e}")
         return []
 
+## 20250813 利用 gemini-embedding切詞與語意判斷做過濾,
+## 參考網頁: https://ai.google.dev/gemini-api/docs/embeddings?hl=zh-tw 
+import numpy as np
+import re
+from sklearn.metrics.pairwise import cosine_similarity
+from google.genai import types
+# 初始化 Gemini Embedding client（API key 已經在前面 configure）
+gemini_client = genai.Client()
+def embed_texts(texts):
+    result = gemini_client.models.embed_content(
+        model="gemini-embedding-001",
+        contents=texts,
+        config=types.EmbedContentConfig(task_type="SEMANTIC_SIMILARITY")
+    )
+    return [np.array(e.values) for e in result.embeddings]
+
+def filter_and_compress_history(chat_history, current_question, 
+                                keyword_thresh=1, sim_keep=0.75, sim_compress=0.5):
+    keywords = set(re.findall(r'\w+', current_question.lower()))
+    # 初步關鍵詞過濾
+    candidates = []
+    for entry in chat_history:
+        text = entry['messageText']
+        match_count = sum(1 for kw in keywords if kw in text.lower())
+        if match_count >= keyword_thresh:
+            candidates.append({'text': text, 'userId': entry['userId']})
+
+    if not candidates:
+        return []
+
+    # 對題目與候選歷史產生嵌入
+    texts = [current_question] + [c['text'] for c in candidates]
+    embeddings = embed_texts(texts)
+    base_vec = embeddings[0]
+    hist_vecs = embeddings[1:]
+
+    result = []
+    for idx, entry in enumerate(candidates):
+        sim = cosine_similarity([base_vec], [hist_vecs[idx]])[0][0]
+        if sim >= sim_keep:
+            result.append(entry['text'])
+        elif sim >= sim_compress:
+            snippet = entry['text'][:40].strip().replace('\n', ' ')
+            result.append(f"[可能不相關] {snippet}...")
+        # else 丟棄
+    return result
 
 # @line_handler.add(MessageEvent, message=TextMessageContent)
 @line_handler.add(MessageEvent)
@@ -209,14 +255,18 @@ def handle_message(event):
                 # user_message_text=event.message.text[3::]
                 chat_history=get_chat_history(user_id)
                 print(f"chat_history={chat_history}")
+                question=event.message.text[3:]
 
                 formatted_history=""
-                for entry in chat_history:
-                    if entry['userId']==user_id:
-                        formatted_history += f"User: {entry['messageText']}\n"
-                    else:
-                        formatted_history += f"Bot: {entry['messageText']}\n"
-                    print(f"formatted_history={formatted_history}")
+                # for entry in chat_history:
+                #     if entry['userId']==user_id:
+                #         formatted_history += f"User: {entry['messageText']}\n"
+                #     else:
+                #         formatted_history += f"Bot: {entry['messageText']}\n"
+                #     print(f"formatted_history={formatted_history}")
+                
+                filtered_history=filter_and_compress_history(chat_history, question)
+                formatted_history="".join(f"{msg}\n" for msg in filtered_history)
 
                 ## 建立歷史紀錄prompt
                 prompt_input=f"{formatted_history}User: {event.message.text[3:]}"
