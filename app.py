@@ -47,10 +47,12 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
+    print(f"request info: {request.headers}")
     return 'Hello, World!'
 
 @app.route('/about')
 def about():
+    print(f"request info: {request.headers}")
     return '<h1> python寫的 LINEBOT大叫: About!</h1>'
 
 @app.route("/callback", methods=['POST'])
