@@ -4,4 +4,4 @@ gunicorn
 google-generativeai
 google-genai
 pillow
-sklearn
+scikit-learn
