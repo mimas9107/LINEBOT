@@ -47,11 +47,13 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return 'Hello, World!'
+    print(f'request from: {request.remote_addr}')
+    return f'Hello, World! request from: {request.remote_addr}'
 
 @app.route('/about')
 def about():
-    return '<h1> python寫的 LINEBOT大叫: About!</h1>'
+    print(f'request from: {request.remote_addr}')
+    return f'<h1> python寫的 LINEBOT大叫: About!</h1><br/><h2>request from: {request.remote_addr} </h2>'
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -185,6 +187,48 @@ def get_chat_history(user_id):
         print(f"Error fetching chat history: {e}")
         return []
 
+# 20230813 切詞與語意相似判斷
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import re
+
+# 模擬低成本 embedding 函數（可換成實際 API）
+def cheap_embedding(text):
+    # 這邊可以用 Gemini embedding API 或其他免費小模型
+    return np.random.rand(1, 128)  # 測試用，實際要改
+
+def filter_and_compress_history(chat_history, current_question):
+    keywords = re.findall(r'\w+', current_question.lower())  # 簡單切詞
+    min_keyword_match = 1  # 至少要有 1 個關鍵詞才算相關候選
+
+    filtered_history = []
+    for entry in chat_history:
+        text = entry['messageText']
+        # 關鍵詞快速過濾
+        match_count = sum(1 for kw in keywords if kw in text.lower())
+        if match_count >= min_keyword_match:
+            filtered_history.append({"text": text, "userId": entry['userId'], "status": "candidate"})
+
+    # 如果全被過濾掉，直接返回空
+    if not filtered_history:
+        return []
+
+    # 嵌入當前問題
+    q_vec = cheap_embedding(current_question)
+
+    # Embedding 相似度判斷
+    final_history = []
+    for entry in filtered_history:
+        h_vec = cheap_embedding(entry["text"])
+        sim = cosine_similarity(q_vec, h_vec)[0][0]
+        if sim >= 0.65:
+            final_history.append(entry["text"])  # 保留原文
+        elif sim >= 0.4:
+            final_history.append(f"[可能不相關] {entry['text'][:20]}...")  # 壓縮成部分文字
+        else:
+            pass  # 丟掉
+
+    return final_history
 
 # @line_handler.add(MessageEvent, message=TextMessageContent)
 @line_handler.add(MessageEvent)
@@ -208,15 +252,17 @@ def handle_message(event):
                 # result=GeminiChatBot(event.message.text[3::])
                 # user_message_text=event.message.text[3::]
                 chat_history=get_chat_history(user_id)
-                print(f"chat_history={chat_history}")
-
+                # print(f"chat_history={chat_history}")
+                processed_history=filter_and_compress_history(chat_history, event.message.text[3:])
                 formatted_history=""
-                for entry in chat_history:
-                    if entry['userId']==user_id:
-                        formatted_history += f"User: {entry['messageText']}\n"
-                    else:
-                        formatted_history += f"Bot: {entry['messageText']}\n"
-                    print(f"formatted_history={formatted_history}")
+                # for entry in chat_history:
+                #     if entry['userId']==user_id:
+                #         formatted_history += f"User: {entry['messageText']}\n"
+                #     else:
+                #         formatted_history += f"Bot: {entry['messageText']}\n"
+                #     print(f"formatted_history={formatted_history}")
+                for msg in processed_history:
+                    formatted_history+=f"{msg}\n"
 
                 ## 建立歷史紀錄prompt
                 prompt_input=f"{formatted_history}User: {event.message.text[3:]}"
