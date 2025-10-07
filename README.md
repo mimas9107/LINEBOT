@@ -1,3 +1,4 @@
+# LINEBOT (with GEMINI chat bot system)
 ## 2025/09/02 重新抽換 GeminiChatBot中使用模型, 2.0-flash-exp已經不能用我的 api key, 而此種呼叫 api 方式可能年底2025/11月 SDK改版會變動, 需要改寫. 收換版 commit: 2bee3f5 
 
 
