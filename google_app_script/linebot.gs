@@ -148,7 +148,7 @@ function getChatHistory(userId, limit) {
 
 function orig_do_ai_bookmark(){
 // LINE Messenging API Token
-    var CHANNEL_ACCESS_TOKEN = 'vvsKRivXdQlG+WUzuBTA8X7TGamqrDaqHOyU81zojAjpnELmLal7zGZ9p8rPmt4KdXpdjiqCU6riMBwpeTdUtleWSo1OSsljsQktCCpe8ZLmT3j1Q24rLa0llnrCEpvCT8lewnHMGiXKpXX70u4T8AdB04t89/1O/w1cDnyilFU='; // 引號內放你的 LINE BOT Access Token
+    var CHANNEL_ACCESS_TOKEN = '<LINE BOT Access Token>'; // 引號內放你的 LINE BOT Access Token
     // 以 JSON 格式解析 User 端傳來的 e 資料
     var msg = JSON.parse(e.postData.contents);
 
